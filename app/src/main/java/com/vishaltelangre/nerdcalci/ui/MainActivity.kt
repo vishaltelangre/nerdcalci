@@ -35,6 +35,7 @@ import androidx.navigation.navArgument
 import androidx.room.Room
 import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.data.local.AppDatabase
+import com.vishaltelangre.nerdcalci.data.local.DatabaseMigrations
 import com.vishaltelangre.nerdcalci.di.CalculatorViewModelFactory
 import com.vishaltelangre.nerdcalci.ui.calculator.CalculatorScreen
 import com.vishaltelangre.nerdcalci.ui.calculator.CalculatorViewModel
@@ -56,7 +57,9 @@ class MainActivity : ComponentActivity() {
         val db = Room.databaseBuilder(
             applicationContext,
             AppDatabase::class.java, Constants.DATABASE_NAME
-        ).build()
+        )
+            .addMigrations(*DatabaseMigrations.ALL_MIGRATIONS)
+            .build()
 
         val prefs = getSharedPreferences("nerdcalci_prefs", MODE_PRIVATE)
 
@@ -73,16 +76,16 @@ class MainActivity : ComponentActivity() {
             }
 
             NerdCalciTheme(darkTheme = isDarkTheme) {
-                // Update system bars to match theme
+                // Update system bar appearance to match theme
                 val view = LocalView.current
-                val backgroundColor = MaterialTheme.colorScheme.background.toArgb()
                 if (!view.isInEditMode) {
                     SideEffect {
                         val window = (view.context as ComponentActivity).window
-                        window.statusBarColor = backgroundColor
-                        window.navigationBarColor = backgroundColor
-                        WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDarkTheme
-                        WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !isDarkTheme
+                        // Use WindowInsetsController for system bar appearance
+                        WindowCompat.getInsetsController(window, view).apply {
+                            isAppearanceLightStatusBars = !isDarkTheme
+                            isAppearanceLightNavigationBars = !isDarkTheme
+                        }
                     }
                 }
 
