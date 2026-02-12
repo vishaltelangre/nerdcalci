@@ -1,0 +1,106 @@
+name: Release APK
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # Only run if commit message starts with [release]
+    if: startsWith(github.event.head_commit.message, '[release]')
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: 'gradle'
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Extract Version from Gradle
+      run: |
+        GRADLE_FILE="app/build.gradle.kts"
+        VERSION_NAME=$(grep 'versionName = ' $GRADLE_FILE | head -n 1 | sed 's/.*"\(.*\)".*/\1/')
+        VERSION_CODE=$(grep 'versionCode = ' $GRADLE_FILE | head -n 1 | sed 's/[^0-9]*//g')
+
+        if [ -z "$VERSION_NAME" ]; then
+          echo "::error::Could not extract versionName from $GRADLE_FILE"
+          exit 1
+        fi
+
+        if [ -z "$VERSION_CODE" ]; then
+          echo "::error::Could not extract versionCode from $GRADLE_FILE"
+          exit 1
+        fi
+
+        echo "Extracted Version: $VERSION_NAME (code: $VERSION_CODE)"
+        echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+        echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_ENV
+
+    - name: Extract Changelog
+      run: |
+        CHANGELOG_FILE="fastlane/metadata/android/en-US/changelogs/${VERSION_CODE}.txt"
+        OUTPUT_FILE="release_notes.txt"
+
+        if [ -f "$CHANGELOG_FILE" ]; then
+          cat "$CHANGELOG_FILE" > "$OUTPUT_FILE"
+          echo "Changelog found for version $VERSION_NAME"
+        else
+          echo "Release $VERSION_NAME" > "$OUTPUT_FILE"
+          echo "" >> "$OUTPUT_FILE"
+          echo "No changelog available yet." >> "$OUTPUT_FILE"
+          echo "::warning file=$CHANGELOG_FILE::Changelog not found. Using default release notes."
+        fi
+
+    - name: Build Release APK
+      run: ./gradlew assembleRelease
+
+    - name: Find APK
+      run: |
+        APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" -print -quit)
+
+        if [ -z "$APK_PATH" ]; then
+          echo "::error::Could not find APK file"
+          exit 1
+        fi
+
+        echo "Found APK: $APK_PATH"
+        echo "APK_PATH=$APK_PATH" >> $GITHUB_ENV
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release-v${{ env.VERSION_NAME }}.apk
+        path: ${{ env.APK_PATH }}
+
+    - name: Create Git Tag
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git tag -a "v${{ env.VERSION_NAME }}" -m "Release version ${{ env.VERSION_NAME }}"
+        git push origin "v${{ env.VERSION_NAME }}"
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        make_latest: true
+        tag_name: v${{ env.VERSION_NAME }}
+        name: NerdCalci v${{ env.VERSION_NAME }}
+        body_path: release_notes.txt
+        files: ${{ env.APK_PATH }}
+        draft: false
+        prerelease: false
