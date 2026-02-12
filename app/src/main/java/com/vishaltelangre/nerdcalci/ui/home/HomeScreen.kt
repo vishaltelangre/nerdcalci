@@ -62,6 +62,8 @@ import com.vishaltelangre.nerdcalci.R
 import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.ui.calculator.CalculatorViewModel
+import com.vishaltelangre.nerdcalci.ui.components.DeleteFileDialog
+import com.vishaltelangre.nerdcalci.ui.components.RenameFileDialog
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -245,7 +247,6 @@ fun FileItem(
     var showMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    var renameText by remember { mutableStateOf("") }
 
     Card(
         modifier = Modifier
@@ -320,7 +321,6 @@ fun FileItem(
                         leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
                         onClick = {
                             showMenu = false
-                            renameText = file.name
                             showRenameDialog = true
                         }
                     )
@@ -339,80 +339,24 @@ fun FileItem(
 
     // Rename dialog
     if (showRenameDialog) {
-        AlertDialog(
-            onDismissRequest = { showRenameDialog = false },
-            title = { Text("Rename File") },
-            text = {
-                Column {
-                    TextField(
-                        value = renameText,
-                        onValueChange = { newValue ->
-                            val filtered = newValue.replace("\n", "")
-                            renameText = if (filtered.length <= Constants.MAX_FILE_NAME_LENGTH) {
-                                filtered
-                            } else {
-                                filtered.take(Constants.MAX_FILE_NAME_LENGTH)
-                            }
-                        },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(
-                            onDone = {
-                                if (renameText.isNotBlank()) {
-                                    onRename(renameText.trim())
-                                    showRenameDialog = false
-                                }
-                            }
-                        )
-                    )
-                    Text(
-                        text = "${renameText.length}/${Constants.MAX_FILE_NAME_LENGTH}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (renameText.isNotBlank()) {
-                            onRename(renameText.trim())
-                            showRenameDialog = false
-                        }
-                    }
-                ) {
-                    Text("Rename")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showRenameDialog = false }) {
-                    Text("Cancel")
-                }
+        RenameFileDialog(
+            currentName = file.name,
+            onDismiss = { showRenameDialog = false },
+            onConfirm = { newName ->
+                onRename(newName.take(Constants.MAX_FILE_NAME_LENGTH))
+                showRenameDialog = false
             }
         )
     }
 
     // Delete confirmation dialog
     if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete File?") },
-            text = { Text("This will permanently delete \"${file.name}\" and all its contents. This action cannot be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onDelete()
-                        showDeleteDialog = false
-                    }
-                ) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel")
-                }
+        DeleteFileDialog(
+            fileName = file.name,
+            onDismiss = { showDeleteDialog = false },
+            onConfirm = {
+                onDelete()
+                showDeleteDialog = false
             }
         )
     }

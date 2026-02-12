@@ -28,6 +28,7 @@ import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
@@ -88,7 +89,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
+import com.vishaltelangre.nerdcalci.ui.components.DeleteFileDialog
+import com.vishaltelangre.nerdcalci.ui.components.RenameFileDialog
 import com.vishaltelangre.nerdcalci.ui.theme.FiraCodeFamily
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -206,6 +210,7 @@ fun CalculatorScreen(fileId: Long, viewModel: CalculatorViewModel, onBack: () ->
     val canUndo = canUndoMap[fileId] ?: false
     val canRedo = canRedoMap[fileId] ?: false
     var showMenu by remember { mutableStateOf(false) }
+    var showRenameDialog by remember { mutableStateOf(false) }
     var showClearConfirmDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     val fileName = files.find { it.id == fileId }?.name ?: "Editor"
@@ -290,11 +295,11 @@ fun CalculatorScreen(fileId: Long, viewModel: CalculatorViewModel, onBack: () ->
                     }
                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                         DropdownMenuItem(
-                            text = { Text("Help") },
-                            leadingIcon = { Icon(Icons.Default.HelpOutline, contentDescription = null) },
+                            text = { Text("Rename File") },
+                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
                             onClick = {
                                 showMenu = false
-                                onHelp()
+                                showRenameDialog = true
                             }
                         )
                         DropdownMenuItem(
@@ -312,6 +317,16 @@ fun CalculatorScreen(fileId: Long, viewModel: CalculatorViewModel, onBack: () ->
                                 }
                             }
                         )
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text("Help") },
+                            leadingIcon = { Icon(Icons.Default.HelpOutline, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                onHelp()
+                            }
+                        )
+                        HorizontalDivider()
                         DropdownMenuItem(
                             text = { Text("Clear File") },
                             leadingIcon = { Icon(Icons.Default.CleaningServices, contentDescription = null) },
@@ -504,6 +519,18 @@ fun CalculatorScreen(fileId: Long, viewModel: CalculatorViewModel, onBack: () ->
         }
     }
 
+    // Rename File dialog
+    if (showRenameDialog) {
+        RenameFileDialog(
+            currentName = fileName,
+            onDismiss = { showRenameDialog = false },
+            onConfirm = { newName ->
+                viewModel.renameFile(fileId, newName.take(Constants.MAX_FILE_NAME_LENGTH))
+                showRenameDialog = false
+            }
+        )
+    }
+
     // Clear All confirmation dialog
     if (showClearConfirmDialog) {
         AlertDialog(
@@ -530,25 +557,13 @@ fun CalculatorScreen(fileId: Long, viewModel: CalculatorViewModel, onBack: () ->
 
     // Delete File confirmation dialog
     if (showDeleteConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirmDialog = false },
-            title = { Text("Delete file?") },
-            text = { Text("This will permanently delete \"$fileName\" and all its contents. This action cannot be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDeleteConfirmDialog = false
-                        viewModel.deleteFile(fileId)
-                        onBack()
-                    }
-                ) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirmDialog = false }) {
-                    Text("Cancel")
-                }
+        DeleteFileDialog(
+            fileName = fileName,
+            onDismiss = { showDeleteConfirmDialog = false },
+            onConfirm = {
+                showDeleteConfirmDialog = false
+                viewModel.deleteFile(fileId)
+                onBack()
             }
         )
     }
