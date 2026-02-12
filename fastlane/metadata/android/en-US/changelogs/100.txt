@@ -5,6 +5,7 @@ Initial release of NerdCalci!
 • Syntax highlighting and auto-completion
 • Multiple files with auto-save
 • Pin important files
+• Duplicate a file
 • Undo/Redo support
 • Import/Export files
 • Dark/Light theme

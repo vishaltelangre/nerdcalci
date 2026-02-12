@@ -48,6 +48,7 @@
 - **Multiple Files**: Create and manage separate calculation files
 - **Auto-save**: Changes are saved automatically
 - **Pin Files**: Keep important files at the top (max 10 pinned files)
+- **Duplicate Files**: Create a copy of a file with a new name
 - **Import/Export**: Share files in `.nerdcalci` format (ZIP)
 - **Copy with Results**: Copy file content with calculated results to clipboard
 
