@@ -28,6 +28,7 @@ import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.FileCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
@@ -92,6 +93,7 @@ import androidx.compose.ui.unit.sp
 import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import com.vishaltelangre.nerdcalci.ui.components.DeleteFileDialog
+import com.vishaltelangre.nerdcalci.ui.components.DuplicateFileDialog
 import com.vishaltelangre.nerdcalci.ui.components.RenameFileDialog
 import com.vishaltelangre.nerdcalci.ui.theme.FiraCodeFamily
 import kotlinx.coroutines.delay
@@ -198,9 +200,16 @@ private fun extractVariables(lines: List<LineEntity>): Set<String> {
  * @param viewModel ViewModel managing calculator state and operations
  * @param onBack Callback when back button is pressed
  * @param onHelp Callback when help button is pressed
+ * @param onNavigateToFile Callback when navigating to a different file (used for duplicate)
  */
 @Composable
-fun CalculatorScreen(fileId: Long, viewModel: CalculatorViewModel, onBack: () -> Unit, onHelp: () -> Unit) {
+fun CalculatorScreen(
+    fileId: Long,
+    viewModel: CalculatorViewModel,
+    onBack: () -> Unit,
+    onHelp: () -> Unit,
+    onNavigateToFile: (Long) -> Unit = {}
+) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val lines by viewModel.getLines(fileId).collectAsState(initial = emptyList())
@@ -211,6 +220,7 @@ fun CalculatorScreen(fileId: Long, viewModel: CalculatorViewModel, onBack: () ->
     val canRedo = canRedoMap[fileId] ?: false
     var showMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
+    var showDuplicateDialog by remember { mutableStateOf(false) }
     var showClearConfirmDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     val fileName = files.find { it.id == fileId }?.name ?: "Editor"
@@ -312,7 +322,15 @@ fun CalculatorScreen(fileId: Long, viewModel: CalculatorViewModel, onBack: () ->
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Copy File") },
+                            text = { Text("Duplicate File") },
+                            leadingIcon = { Icon(Icons.Default.FileCopy, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                showDuplicateDialog = true
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Copy File Content") },
                             leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
                             onClick = {
                                 showMenu = false
@@ -527,6 +545,20 @@ fun CalculatorScreen(fileId: Long, viewModel: CalculatorViewModel, onBack: () ->
             onConfirm = { newName ->
                 viewModel.renameFile(fileId, newName.take(Constants.MAX_FILE_NAME_LENGTH))
                 showRenameDialog = false
+            }
+        )
+    }
+
+    // Duplicate File dialog
+    if (showDuplicateDialog) {
+        DuplicateFileDialog(
+            originalName = fileName,
+            onDismiss = { showDuplicateDialog = false },
+            onConfirm = { newName ->
+                viewModel.duplicateFile(fileId, newName.take(Constants.MAX_FILE_NAME_LENGTH)) { newFileId ->
+                    onNavigateToFile(newFileId)
+                }
+                showDuplicateDialog = false
             }
         )
     }

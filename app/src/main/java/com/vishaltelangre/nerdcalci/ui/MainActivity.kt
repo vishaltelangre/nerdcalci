@@ -165,7 +165,12 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 fileId = fileId,
                 viewModel = viewModel,
                 onBack = { navController.popBackStack() },
-                onHelp = { navController.navigate("help") }
+                onHelp = { navController.navigate("help") },
+                onNavigateToFile = { newFileId ->
+                    navController.navigate("editor/$newFileId") {
+                        popUpTo("editor/$fileId") { inclusive = true }
+                    }
+                }
             )
         }
 

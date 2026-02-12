@@ -244,6 +244,41 @@ class CalculatorViewModel(
         }
     }
 
+    // Duplicate an existing file with all its lines
+    fun duplicateFile(sourceFileId: Long, newName: String, onCreated: (Long) -> Unit = {}) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val sourceFile = dao.getFileById(sourceFileId)
+            if (sourceFile != null) {
+                // Create new file
+                val newFileId = dao.insertFile(
+                    FileEntity(
+                        name = newName,
+                        lastModified = System.currentTimeMillis(),
+                        isPinned = false
+                    )
+                )
+
+                // Copy all lines from source file
+                val sourceLines = dao.getLinesForFileSync(sourceFileId)
+                sourceLines.forEach { sourceLine ->
+                    dao.insertLine(
+                        LineEntity(
+                            fileId = newFileId,
+                            sortOrder = sourceLine.sortOrder,
+                            expression = sourceLine.expression,
+                            result = sourceLine.result
+                        )
+                    )
+                }
+
+                // Notify callback with new file ID on main thread
+                withContext(Dispatchers.Main) {
+                    onCreated(newFileId)
+                }
+            }
+        }
+    }
+
     fun addLine(fileId: Long, sortOrder: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             // Save state for undo

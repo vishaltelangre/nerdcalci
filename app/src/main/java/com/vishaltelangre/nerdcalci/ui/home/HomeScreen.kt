@@ -18,6 +18,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.FileCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
@@ -63,6 +64,7 @@ import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.ui.calculator.CalculatorViewModel
 import com.vishaltelangre.nerdcalci.ui.components.DeleteFileDialog
+import com.vishaltelangre.nerdcalci.ui.components.DuplicateFileDialog
 import com.vishaltelangre.nerdcalci.ui.components.RenameFileDialog
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -170,6 +172,11 @@ fun HomeScreen(
                         onRename = { newName ->
                             viewModel.renameFile(file.id, newName.take(Constants.MAX_FILE_NAME_LENGTH))
                         },
+                        onDuplicate = { newName ->
+                            viewModel.duplicateFile(file.id, newName.take(Constants.MAX_FILE_NAME_LENGTH)) { newFileId ->
+                                onFileClick(newFileId)
+                            }
+                        },
                         onDelete = {
                             viewModel.deleteFile(file.id)
                         },
@@ -241,11 +248,13 @@ fun FileItem(
     file: FileEntity,
     onClick: () -> Unit,
     onRename: (String) -> Unit,
+    onDuplicate: (String) -> Unit,
     onDelete: () -> Unit,
     onTogglePin: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
+    var showDuplicateDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     Card(
@@ -325,6 +334,14 @@ fun FileItem(
                         }
                     )
                     DropdownMenuItem(
+                        text = { Text("Duplicate") },
+                        leadingIcon = { Icon(Icons.Default.FileCopy, contentDescription = null) },
+                        onClick = {
+                            showMenu = false
+                            showDuplicateDialog = true
+                        }
+                    )
+                    DropdownMenuItem(
                         text = { Text("Delete") },
                         leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
                         onClick = {
@@ -345,6 +362,18 @@ fun FileItem(
             onConfirm = { newName ->
                 onRename(newName.take(Constants.MAX_FILE_NAME_LENGTH))
                 showRenameDialog = false
+            }
+        )
+    }
+
+    // Duplicate dialog
+    if (showDuplicateDialog) {
+        DuplicateFileDialog(
+            originalName = file.name,
+            onDismiss = { showDuplicateDialog = false },
+            onConfirm = { newName ->
+                onDuplicate(newName.take(Constants.MAX_FILE_NAME_LENGTH))
+                showDuplicateDialog = false
             }
         )
     }
