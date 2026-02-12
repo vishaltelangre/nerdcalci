@@ -1,0 +1,10 @@
+Initial release of NerdCalci!
+
+• Variable support for reusable calculations
+• Percentage calculations with natural syntax
+• Syntax highlighting and auto-completion
+• Multiple files with auto-save
+• Pin important files
+• Undo/Redo support
+• Import/Export files
+• Dark/Light theme

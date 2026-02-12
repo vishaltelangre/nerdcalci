@@ -1,0 +1,25 @@
+NerdCalci is a powerful calculator designed for nerds and power users who need more than basic arithmetic.
+
+Features:
+
+• Variable Support - Define variables and reuse them in calculations
+• Percentage Calculations - Natural syntax like "20% of 50000" or "15% off 1000"
+• Syntax Highlighting - Color-coded numbers, variables, operators, and comments
+• Auto-completion - Smart suggestions for variable names
+• Comments - Document your calculations with # comments
+• Multiple Files - Organize calculations in separate files with auto-save
+• Pin Files - Keep frequently used files at the top
+• Undo/Redo - Up to 30 steps per file
+• Import/Export - Share files in .nerdcalci format
+• Copy with Results - Copy calculations with their results
+• Dark/Light Theme - System, dark, or light mode support
+• Line Numbers - Easy reference and navigation
+
+Perfect for:
+• Quick calculations with reusable values
+• Budget planning and financial calculations
+• Unit conversions and formulas
+• Educational purposes and learning
+• Any scenario where you need to document and reuse calculation values
+
+NerdCalci combines the simplicity of a calculator with the power of a text editor, making it ideal for developers, students, accountants, and anyone who frequently works with numbers.
