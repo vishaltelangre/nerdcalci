@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -41,6 +42,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -140,18 +142,26 @@ private fun applySyntaxHighlighting(
                     }
                     break
                 }
+
                 char.isDigit() || (char == '.' && i + 1 < text.length && text[i + 1].isDigit()) -> {
                     val start = i
                     while (i < text.length && (text[i].isDigit() || text[i] == '.')) i++
                     withStyle(SpanStyle(color = numberColor)) { append(text.substring(start, i)) }
                     continue
                 }
+
                 char.isLetter() -> {
                     val start = i
                     while (i < text.length && (text[i].isLetterOrDigit() || text[i] == '_')) i++
-                    withStyle(SpanStyle(color = variableColor, fontWeight = FontWeight.Bold)) { append(text.substring(start, i)) }
+                    withStyle(
+                        SpanStyle(
+                            color = variableColor,
+                            fontWeight = FontWeight.Bold
+                        )
+                    ) { append(text.substring(start, i)) }
                     continue
                 }
+
                 char == '%' -> withStyle(SpanStyle(color = percentColor)) { append(char) }
                 char in "+-*/^()=×÷" -> withStyle(SpanStyle(color = operatorColor)) { append(char) }
                 else -> withStyle(SpanStyle(color = defaultColor)) { append(char) }
@@ -212,6 +222,7 @@ fun CalculatorScreen(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
     val lines by viewModel.getLines(fileId).collectAsState(initial = emptyList())
     val files by viewModel.allFiles.collectAsState(initial = emptyList())
     val canUndoMap by viewModel.canUndo.collectAsState()
@@ -232,8 +243,25 @@ fun CalculatorScreen(
     // Track which line is currently focused by the user
     var currentlyFocusedLineId by remember { mutableStateOf<Long?>(null) }
 
+    // Track when a new line is requested to be added (for auto-focus)
+    var requestNewLineAfterSortOrder by remember { mutableStateOf<Int?>(null) }
+
     // Track toolbar text insertion requests (used for inserting symbols using custom keyboard shortcuts)
     var insertTextRequest by remember { mutableStateOf<Pair<Long, String>?>(null) }
+
+    // Auto-focus newly created lines
+    LaunchedEffect(lines.size, requestNewLineAfterSortOrder) {
+        requestNewLineAfterSortOrder?.let { sortOrder ->
+            // Find the line that was just created (empty line with sortOrder = sortOrder + 1)
+            val newLine = lines.find { it.sortOrder == sortOrder + 1 && it.expression.isEmpty() }
+            newLine?.let {
+                focusLineId = it.id
+                focusCursorPosition =
+                    if (lines.indexOf(it) == 0) 0 else 1 // Line 1 has no leading space
+                requestNewLineAfterSortOrder = null
+            }
+        }
+    }
 
     // Check if keyboard is visible
     val density = LocalDensity.current
@@ -256,120 +284,231 @@ fun CalculatorScreen(
     val percentColor = if (isDarkTheme) PercentColorDark else PercentColorLight
     val commentColor = if (isDarkTheme) CommentColorDark else CommentColorLight
 
-    Box(
+    Scaffold(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = {
-                Text(
-                    text = fileName,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onSurface)
-                }
-            },
-            actions = {
-                IconButton(
-                    onClick = { viewModel.undo(fileId) },
-                    enabled = canUndo
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Undo,
-                        "Undo",
-                        tint = if (canUndo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+            .imePadding(),
+        topBar = {
+            Column {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = fileName,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                "Back",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = { viewModel.undo(fileId) },
+                            enabled = canUndo
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Undo,
+                                "Undo",
+                                tint = if (canUndo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
 
-                IconButton(
-                    onClick = { viewModel.redo(fileId) },
-                    enabled = canRedo
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Redo,
-                        "Redo",
-                        tint = if (canRedo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                        IconButton(
+                            onClick = { viewModel.redo(fileId) },
+                            enabled = canRedo
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Redo,
+                                "Redo",
+                                tint = if (canRedo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
 
-                Box {
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, "More options", tint = MaterialTheme.colorScheme.onSurface)
-                    }
-                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                        DropdownMenuItem(
-                            text = { Text("Help") },
-                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = null) },
-                            onClick = {
-                                showMenu = false
-                                onHelp()
+                        Box {
+                            IconButton(onClick = { showMenu = true }) {
+                                Icon(
+                                    Icons.Default.MoreVert,
+                                    "More options",
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
                             }
-                        )
-                        HorizontalDivider()
-                        DropdownMenuItem(
-                            text = { Text("Rename File") },
-                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
-                            onClick = {
-                                showMenu = false
-                                showRenameDialog = true
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Duplicate File") },
-                            leadingIcon = { Icon(Icons.Default.FileCopy, contentDescription = null) },
-                            onClick = {
-                                showMenu = false
-                                showDuplicateDialog = true
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Copy File Content") },
-                            leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
-                            onClick = {
-                                showMenu = false
-                                coroutineScope.launch {
-                                    val result = viewModel.copyFileToClipboard(context, fileId)
-                                    result.onSuccess { message ->
-                                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                                    }.onFailure { error ->
-                                        Toast.makeText(context, "Copy failed: ${error.message}", Toast.LENGTH_LONG).show()
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false }) {
+                                DropdownMenuItem(
+                                    text = { Text("Help") },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.HelpOutline,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    onClick = {
+                                        showMenu = false
+                                        onHelp()
                                     }
+                                )
+                                HorizontalDivider()
+                                DropdownMenuItem(
+                                    text = { Text("Rename File") },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.Edit,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    onClick = {
+                                        showMenu = false
+                                        showRenameDialog = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Duplicate File") },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.FileCopy,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    onClick = {
+                                        showMenu = false
+                                        showDuplicateDialog = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Copy File Content") },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.ContentCopy,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    onClick = {
+                                        showMenu = false
+                                        coroutineScope.launch {
+                                            val result =
+                                                viewModel.copyFileToClipboard(context, fileId)
+                                            result.onSuccess { message ->
+                                                Toast.makeText(context, message, Toast.LENGTH_SHORT)
+                                                    .show()
+                                            }.onFailure { error ->
+                                                Toast.makeText(
+                                                    context,
+                                                    "Copy failed: ${error.message}",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+                                            }
+                                        }
+                                    }
+                                )
+                                HorizontalDivider()
+                                DropdownMenuItem(
+                                    text = { Text("Clear File") },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.CleaningServices,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    onClick = {
+                                        showMenu = false
+                                        showClearConfirmDialog = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Delete File") },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    onClick = {
+                                        showMenu = false
+                                        showDeleteConfirmDialog = true
+                                    }
+                                )
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+                )
+                HorizontalDivider(
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+            }
+        },
+        bottomBar = {
+            if (isKeyboardVisible) {
+                Column {
+                    HorizontalDivider(
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .padding(horizontal = 8.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val symbols = listOf(".", "+", "-", "×", "÷", "=", "%", "(", ")", "#")
+                        symbols.forEach { symbol ->
+                            Surface(
+                                onClick = {
+                                    currentlyFocusedLineId?.let { lineId ->
+                                        insertTextRequest = Pair(lineId, symbol)
+                                    }
+                                },
+                                modifier = Modifier
+                                    .width(44.dp)
+                                    .height(40.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                tonalElevation = 1.dp,
+                                shadowElevation = 2.dp
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .border(
+                                            width = 0.5.dp,
+                                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                            shape = RoundedCornerShape(8.dp)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = symbol,
+                                        style = MaterialTheme.typography.bodyLarge.copy(
+                                            fontFamily = FiraCodeFamily,
+                                            fontWeight = FontWeight.Medium
+                                        ),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
                                 }
                             }
-                        )
-                        HorizontalDivider()
-                        DropdownMenuItem(
-                            text = { Text("Clear File") },
-                            leadingIcon = { Icon(Icons.Default.CleaningServices, contentDescription = null) },
-                            onClick = {
-                                showMenu = false
-                                showClearConfirmDialog = true
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Delete File") },
-                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                            onClick = {
-                                showMenu = false
-                                showDeleteConfirmDialog = true
-                            }
-                        )
+                        }
                     }
                 }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
-        )
-
-        HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
-
-        Box(modifier = Modifier.weight(1f)) {
+            }
+        }
+    ) { paddingValues ->
+        // Editor area
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
             // Full-height vertical dividers as background
             Row(modifier = Modifier.fillMaxSize()) {
                 Box(modifier = Modifier.width(50.dp))
@@ -387,8 +526,11 @@ fun CalculatorScreen(
                 Box(modifier = Modifier.width(120.dp))
             }
 
-            // LazyColumn with lines on top
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+            // LazyColumn with lines
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize()
+            ) {
                 itemsIndexed(lines) { index, line ->
                     LineRow(
                         lineNumber = index + 1,
@@ -416,18 +558,36 @@ fun CalculatorScreen(
                         },
                         onValueChange = { newValue ->
                             viewModel.updateLine(line.copy(expression = newValue))
+                            // Scroll to this line only if it's being edited but off-screen
+                            if (currentlyFocusedLineId == line.id) {
+                                coroutineScope.launch {
+                                    val visibleItems = listState.layoutInfo.visibleItemsInfo
+                                    val isVisible = visibleItems.any { it.index == index }
+                                    if (!isVisible) {
+                                        listState.animateScrollToItem(index)
+                                    }
+                                }
+                            }
                         },
                         onEnter = {
+                            requestNewLineAfterSortOrder = line.sortOrder
                             viewModel.addLine(fileId, line.sortOrder + 1)
-                            // Focus will be handled by auto-focus in LineRow for new empty lines
+                            // Scroll to the newly created line
+                            coroutineScope.launch {
+                                delay(100)
+                                val newLineIndex = index + 1
+                                if (newLineIndex < lines.size + 1) {
+                                    listState.animateScrollToItem(newLineIndex)
+                                }
+                            }
                         },
                         onDelete = {
                             if (lines.size > 1) {
-                                // Focus previous line at end
+                                // Focus previous line immediately (no delay) to keep keyboard open
                                 val prevIndex = index - 1
                                 val prevLine = lines.getOrNull(prevIndex)
                                 if (prevLine != null) {
-                                    val prevLineNumber = prevIndex + 1 // Convert 0-based index to 1-based line number
+                                    val prevLineNumber = prevIndex + 1
                                     focusLineId = prevLine.id
                                     // For empty lines: line 1 has no leading space (pos 0), others at pos 1
                                     focusCursorPosition = if (prevLine.expression.isEmpty()) {
@@ -469,68 +629,10 @@ fun CalculatorScreen(
                         }
                     )
                     if (index < lines.size - 1) {
-                        HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                    }
-                }
-            }
-        }
-        }
-
-        // Keyboard toolbar with common symbols - only show when keyboard is visible
-        // Position it at the bottom of the Box, above the keyboard
-        if (isKeyboardVisible) {
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .imePadding()
-            ) {
-                HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .padding(horizontal = 8.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    val symbols = listOf(".", "+", "-", "×", "÷", "=", "%", "(", ")", "#")
-                    symbols.forEach { symbol ->
-                        Surface(
-                            onClick = {
-                                // Trigger insertion for the currently focused line
-                                currentlyFocusedLineId?.let { lineId ->
-                                    insertTextRequest = Pair(lineId, symbol)
-                                }
-                            },
-                            modifier = Modifier
-                                .width(44.dp)
-                                .height(40.dp),
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.surface,
-                            tonalElevation = 1.dp,
-                            shadowElevation = 2.dp
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .border(
-                                        width = 0.5.dp,
-                                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                                        shape = RoundedCornerShape(8.dp)
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = symbol,
-                                    style = MaterialTheme.typography.bodyLarge.copy(
-                                        fontFamily = FiraCodeFamily,
-                                        fontWeight = FontWeight.Medium
-                                    ),
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
+                        HorizontalDivider(
+                            thickness = 1.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
                     }
                 }
             }
@@ -555,7 +657,10 @@ fun CalculatorScreen(
             originalName = fileName,
             onDismiss = { showDuplicateDialog = false },
             onConfirm = { newName ->
-                viewModel.duplicateFile(fileId, newName.take(Constants.MAX_FILE_NAME_LENGTH)) { newFileId ->
+                viewModel.duplicateFile(
+                    fileId,
+                    newName.take(Constants.MAX_FILE_NAME_LENGTH)
+                ) { newFileId ->
                     onNavigateToFile(newFileId)
                 }
                 showDuplicateDialog = false
@@ -629,21 +734,22 @@ private fun LineRow(
     val defaultTextColor = MaterialTheme.colorScheme.onSurface
 
     var textFieldValue by remember(line.id) {
-        mutableStateOf(TextFieldValue(
-            annotatedString = applySyntaxHighlighting(
-                displayText,
-                numberColor,
-                variableColor,
-                operatorColor,
-                percentColor,
-                commentColor,
-                defaultTextColor
+        mutableStateOf(
+            TextFieldValue(
+                annotatedString = applySyntaxHighlighting(
+                    displayText,
+                    numberColor,
+                    variableColor,
+                    operatorColor,
+                    percentColor,
+                    commentColor,
+                    defaultTextColor
+                )
             )
-        ))
+        )
     }
     var previousSelection by remember { mutableStateOf(textFieldValue.selection) }
     var isFocused by remember { mutableStateOf(false) }
-    var showDeleteIcon by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
 
     // Autocomplete suggestions
@@ -659,7 +765,21 @@ private fun LineRow(
                 ""
             } else {
                 // Find the word before cursor
-                val wordStart = beforeCursor.lastIndexOfAny(charArrayOf(' ', '+', '-', '*', '/', '×', '÷', '(', ')', '=', ',')) + 1
+                val wordStart = beforeCursor.lastIndexOfAny(
+                    charArrayOf(
+                        ' ',
+                        '+',
+                        '-',
+                        '*',
+                        '/',
+                        '×',
+                        '÷',
+                        '(',
+                        ')',
+                        '=',
+                        ','
+                    )
+                ) + 1
                 beforeCursor.substring(wordStart)
             }
         } else ""
@@ -671,19 +791,6 @@ private fun LineRow(
                 it.startsWith(currentWord, ignoreCase = true) && it != currentWord
             }.sorted()
         } else emptyList()
-    }
-
-    // Show delete icon after a delay when line loses focus
-    LaunchedEffect(isFocused, textFieldValue.text) {
-        val isEmpty = textFieldValue.text.trim().isEmpty()
-        if (!isFocused && isEmpty && lineNumber > 1) {
-            delay(500) // 500ms delay
-            if (!isFocused) { // Check again in case focus changed during delay
-                showDeleteIcon = true
-            }
-        } else {
-            showDeleteIcon = false
-        }
     }
 
     // Sync with database updates
@@ -704,36 +811,10 @@ private fun LineRow(
         }
     }
 
-    // Auto-focus empty lines:
-    // - Line 1: if it's the only line and empty (on file open)
-    // - Other lines: newly created empty lines (but not if we're focusing programmatically)
-    LaunchedEffect(line.id, line.expression) {
-        if (line.expression.isEmpty() && !shouldFocus) {
-            if (lineNumber == 1) {
-                // Auto-focus first line only if it's the only line
-                // Check will be done by parent, but we'll focus anyway for UX
-                delay(50)
-                focusRequester.requestFocus()
-                // No leading space on line 1, cursor at position 0
-                textFieldValue = textFieldValue.copy(
-                    selection = TextRange(0)
-                )
-            } else if (lineNumber > 1) {
-                // Auto-focus newly created lines after line 1
-                delay(50)
-                focusRequester.requestFocus()
-                // Position cursor after the leading space
-                textFieldValue = textFieldValue.copy(
-                    selection = TextRange(1)
-                )
-            }
-        }
-    }
-
     // Handle programmatic focus requests (from navigation or deletion)
     LaunchedEffect(shouldFocus, focusCursorPos) {
         if (shouldFocus && focusCursorPos != null) {
-            delay(150) // Delay to ensure UI is stable and other effects don't interfere
+            delay(16) // Minimal delay (1 frame) to prevent keyboard flickering
             focusRequester.requestFocus()
 
             // Set cursor position - focusCursorPos is the desired position in the expression
@@ -760,7 +841,10 @@ private fun LineRow(
             val cursorPosition = currentSelection.start
 
             // Insert the text at cursor position
-            val newText = currentText.substring(0, cursorPosition) + insertTextRequest + currentText.substring(cursorPosition)
+            val newText = currentText.substring(
+                0,
+                cursorPosition
+            ) + insertTextRequest + currentText.substring(cursorPosition)
             val newCursorPosition = cursorPosition + insertTextRequest.length
 
             textFieldValue = TextFieldValue(
@@ -792,41 +876,20 @@ private fun LineRow(
             .background(MaterialTheme.colorScheme.background),
         verticalAlignment = Alignment.Top
     ) {
-        // Line number area with delete icon
+        // Line number area
         Box(
             modifier = Modifier
                 .width(50.dp)
                 .fillMaxHeight()
                 .background(MaterialTheme.colorScheme.surfaceVariant)
-                .padding(vertical = 10.dp)
+                .padding(vertical = 10.dp),
+            contentAlignment = Alignment.TopEnd
         ) {
-            // Delete icon at far left (shows after delay)
-            if (showDeleteIcon) {
-                IconButton(
-                    onClick = { onDelete() },
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(0.dp)
-                        .width(18.dp)
-                        .height(18.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete line",
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(0.dp)
-                    )
-                }
-            }
-
-            // Line number at right
             Text(
                 text = "$lineNumber",
                 style = MaterialTheme.typography.bodyLarge.copy(fontFamily = FiraCodeFamily),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(end = 8.dp)
+                modifier = Modifier.padding(end = 8.dp)
             )
         }
 
@@ -845,159 +908,178 @@ private fun LineRow(
         ) {
             Column {
                 BasicTextField(
-                value = textFieldValue,
-                onValueChange = { newValue ->
-                    val filteredText = newValue.text.replace("\n", "")
+                    value = textFieldValue,
+                    onValueChange = { newValue ->
+                        val filteredText = newValue.text.replace("\n", "")
 
-                    // Handle Enter key
-                    if (newValue.text.contains("\n")) {
-                        onEnter()
-                        return@BasicTextField
-                    }
-
-                    // Detect backspace deleting the leading space (empty line deletion)
-                    if (filteredText.isEmpty() && lineNumber > 1) {
-                        onDelete()
-                        return@BasicTextField
-                    }
-
-                    // Strip leading space if user added real content
-                    val actualText = if (filteredText.startsWith(" ") && filteredText.length > 1) {
-                        filteredText.substring(1)
-                    } else if (filteredText == " ") {
-                        "" // Just the space, treat as empty
-                    } else {
-                        filteredText
-                    }
-
-                    // Re-add leading space if text becomes empty (but not for line 1)
-                    val displayText = if (actualText.isEmpty() && lineNumber > 1) " " else actualText
-
-                    previousSelection = newValue.selection
-                    textFieldValue = newValue.copy(
-                        annotatedString = applySyntaxHighlighting(
-                            displayText,
-                            numberColor,
-                            variableColor,
-                            operatorColor,
-                            percentColor,
-                            commentColor,
-                            defaultTextColor
-                        )
-                    )
-                    onValueChange(actualText)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(focusRequester)
-                    .onFocusChanged { focusState ->
-                        isFocused = focusState.isFocused
-                        if (focusState.isFocused) {
-                            onFocused()
-                        } else {
-                            onBlur()
+                        // Handle Enter key
+                        if (newValue.text.contains("\n")) {
+                            onEnter()
+                            return@BasicTextField
                         }
-                    }
-                    .onKeyEvent { keyEvent ->
-                        // Only handle KEY_DOWN to avoid double triggering
-                        if (keyEvent.type == KeyEventType.KeyDown) {
-                            when (keyEvent.key) {
-                                Key.DirectionUp -> {
-                                    // Only navigate if cursor is at the start
-                                    // Line 1: position 0, Others: position 0 or 1 (before/on leading space)
-                                    val atStart = if (lineNumber == 1) {
-                                        textFieldValue.selection.start == 0
-                                    } else {
-                                        textFieldValue.selection.start <= 1
-                                    }
-                                    if (atStart && !shouldFocus) {
-                                        onNavigateUp()
-                                        true // Consume the event
-                                    } else {
-                                        false
-                                    }
-                                }
-                                Key.DirectionDown -> {
-                                    // Only navigate if cursor is at the end
-                                    if (textFieldValue.selection.start >= textFieldValue.text.length && !shouldFocus) {
-                                        onNavigateDown()
-                                        true // Consume the event
-                                    } else {
-                                        false
-                                    }
-                                }
-                                else -> false
+
+                        // Detect backspace deleting the leading space (empty line deletion)
+                        if (filteredText.isEmpty() && lineNumber > 1) {
+                            onDelete()
+                            return@BasicTextField
+                        }
+
+                        // Strip leading space if user added real content
+                        val actualText =
+                            if (filteredText.startsWith(" ") && filteredText.length > 1) {
+                                filteredText.substring(1)
+                            } else if (filteredText == " ") {
+                                "" // Just the space, treat as empty
+                            } else {
+                                filteredText
                             }
-                        } else {
-                            false
-                        }
-                    },
-                textStyle = MaterialTheme.typography.bodyLarge.copy(
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontFamily = FiraCodeFamily
-                ),
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { onEnter() }),
-                decorationBox = { innerTextField ->
-                    if (textFieldValue.text.trim().isEmpty() && lineNumber == 1) {
-                        Text(
-                            "Type here...",
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontFamily = FiraCodeFamily
+
+                        // Re-add leading space if text becomes empty (but not for line 1)
+                        val displayText =
+                            if (actualText.isEmpty() && lineNumber > 1) " " else actualText
+
+                        previousSelection = newValue.selection
+                        textFieldValue = newValue.copy(
+                            annotatedString = applySyntaxHighlighting(
+                                displayText,
+                                numberColor,
+                                variableColor,
+                                operatorColor,
+                                percentColor,
+                                commentColor,
+                                defaultTextColor
                             )
                         )
-                    }
-                    innerTextField()
-                }
-            )
-
-            // Autocomplete suggestions dropdown
-            if (suggestions.isNotEmpty() && isFocused) {
-                Column(
+                        onValueChange(actualText)
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .padding(vertical = 4.dp)
-                ) {
-                    suggestions.take(5).forEach { suggestion ->
-                        Text(
-                            text = suggestion,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    // Replace current word with suggestion
-                                    val cursorPos = textFieldValue.selection.start
-                                    val text = textFieldValue.text
-                                    val beforeCursor = text.substring(0, cursorPos)
-                                    val wordStart = beforeCursor.lastIndexOfAny(
-                                        charArrayOf(' ', '+', '-', '*', '/', '×', '÷', '(', ')', '=', ',')
-                                    ) + 1
-                                    val newText = text.substring(0, wordStart) + suggestion + text.substring(cursorPos)
-                                    val newCursorPos = wordStart + suggestion.length
+                        .focusRequester(focusRequester)
+                        .onFocusChanged { focusState ->
+                            isFocused = focusState.isFocused
+                            if (focusState.isFocused) {
+                                onFocused()
+                            } else {
+                                onBlur()
+                            }
+                        }
+                        .onKeyEvent { keyEvent ->
+                            // Only handle KEY_DOWN to avoid double triggering
+                            if (keyEvent.type == KeyEventType.KeyDown) {
+                                when (keyEvent.key) {
+                                    Key.DirectionUp -> {
+                                        // Only navigate if cursor is at the start
+                                        // Line 1: position 0, Others: position 0 or 1 (before/on leading space)
+                                        val atStart = if (lineNumber == 1) {
+                                            textFieldValue.selection.start == 0
+                                        } else {
+                                            textFieldValue.selection.start <= 1
+                                        }
+                                        if (atStart && !shouldFocus) {
+                                            onNavigateUp()
+                                            true // Consume the event
+                                        } else {
+                                            false
+                                        }
+                                    }
 
-                                    textFieldValue = TextFieldValue(
-                                        annotatedString = applySyntaxHighlighting(
-                                            newText,
-                                            numberColor,
-                                            variableColor,
-                                            operatorColor,
-                                            percentColor,
-                                            commentColor,
-                                            defaultTextColor
-                                        ),
-                                        selection = TextRange(newCursorPos)
-                                    )
-                                    onValueChange(newText)
+                                    Key.DirectionDown -> {
+                                        // Only navigate if cursor is at the end
+                                        if (textFieldValue.selection.start >= textFieldValue.text.length && !shouldFocus) {
+                                            onNavigateDown()
+                                            true // Consume the event
+                                        } else {
+                                            false
+                                        }
+                                    }
+
+                                    else -> false
                                 }
-                                .padding(horizontal = 8.dp, vertical = 6.dp),
-                            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FiraCodeFamily),
-                            color = variableColor
-                        )
+                            } else {
+                                false
+                            }
+                        },
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontFamily = FiraCodeFamily
+                    ),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { onEnter() }),
+                    decorationBox = { innerTextField ->
+                        if (textFieldValue.text.trim().isEmpty() && lineNumber == 1) {
+                            Text(
+                                "Type here...",
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontFamily = FiraCodeFamily
+                                )
+                            )
+                        }
+                        innerTextField()
+                    }
+                )
+
+                // Autocomplete suggestions dropdown
+                if (suggestions.isNotEmpty() && isFocused) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .padding(vertical = 4.dp)
+                    ) {
+                        suggestions.take(5).forEach { suggestion ->
+                            Text(
+                                text = suggestion,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        // Replace current word with suggestion
+                                        val cursorPos = textFieldValue.selection.start
+                                        val text = textFieldValue.text
+                                        val beforeCursor = text.substring(0, cursorPos)
+                                        val wordStart = beforeCursor.lastIndexOfAny(
+                                            charArrayOf(
+                                                ' ',
+                                                '+',
+                                                '-',
+                                                '*',
+                                                '/',
+                                                '×',
+                                                '÷',
+                                                '(',
+                                                ')',
+                                                '=',
+                                                ','
+                                            )
+                                        ) + 1
+                                        val newText = text.substring(
+                                            0,
+                                            wordStart
+                                        ) + suggestion + text.substring(cursorPos)
+                                        val newCursorPos = wordStart + suggestion.length
+
+                                        textFieldValue = TextFieldValue(
+                                            annotatedString = applySyntaxHighlighting(
+                                                newText,
+                                                numberColor,
+                                                variableColor,
+                                                operatorColor,
+                                                percentColor,
+                                                commentColor,
+                                                defaultTextColor
+                                            ),
+                                            selection = TextRange(newCursorPos)
+                                        )
+                                        onValueChange(newText)
+                                    }
+                                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FiraCodeFamily),
+                                color = variableColor
+                            )
+                        }
                     }
                 }
-            }
             }
         }
 
