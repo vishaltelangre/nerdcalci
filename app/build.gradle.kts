@@ -18,6 +18,13 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Disable dependency metadata for F-Droid compatibility
+    // See: https://forum.f-droid.org/t/build-fails-with-found-extra-signing-block/29220
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false

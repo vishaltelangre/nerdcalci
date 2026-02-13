@@ -1,7 +1,7 @@
 Categories:
   - Science & Education
-  - Writing
   - System
+  - Writing
 License: GPL-3.0-or-later
 AuthorName: Vishal Telangre
 AuthorEmail: vishaltelangre@gmail.com
@@ -15,7 +15,7 @@ AutoName: NerdCalci
 
 RepoType: git
 Repo: https://github.com/vishaltelangre/nerdcalci.git
-Binaries:
+Binaries: 
   https://github.com/vishaltelangre/nerdcalci/releases/download/v%v/NerdCalci-v%v.apk
 
 Builds:
