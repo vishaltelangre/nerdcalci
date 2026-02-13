@@ -8,6 +8,31 @@ This document describes how to create and publish releases for NerdCalci.
 - All changes committed and pushed to main branch
 - Version bumped in `app/build.gradle.kts`
 
+## Initial Setup (One Time Only)
+
+To enable automated signing, you must configure secrets in your GitHub repository:
+
+### 1. Generate Upload Keystore
+If you don't have one, generate a keystore:
+```bash
+keytool -genkey -v -keystore release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias nerdcalci
+```
+
+### 2. Encode Keystore
+Get the base64 string of your keystore file:
+```bash
+base64 -i release.jks
+# Copy the output string
+```
+
+### 3. Add GitHub Secrets
+Go to **Settings > Secrets and variables > Actions** and add these 4 secrets:
+
+1.  `KEYSTORE_FILE`: The base64 string from step 2.
+2.  `KEYSTORE_PASSWORD`: Password for the keystore.
+3.  `KEY_ALIAS`: Alias name (`nerdcalci`).
+4.  `KEY_PASSWORD`: Password for the key alias. **(If `keytool` didn't ask for a second password, it's the same as `KEYSTORE_PASSWORD`)**.
+
 ## Automated Release (Recommended)
 
 ### 1. Update Version
@@ -72,52 +97,18 @@ If you need to build locally:
 
 The APK will be at: `app/build/outputs/apk/release/app-release-unsigned.apk`
 
-### Create Signed Release (For Play Store)
+### Build Signed APK (Manual)
 
-#### 1. Generate Keystore (First time only)
-
-```bash
-keytool -genkey -v -keystore nerdcalci-release-key.jks \
-  -keyalg RSA -keysize 2048 -validity 10000 -alias nerdcalci
-```
-
-**Important:** Store the keystore file and passwords securely!
-
-#### 2. Configure Signing
-
-Add to `app/build.gradle.kts`:
-
-```kotlin
-android {
-    signingConfigs {
-        create("release") {
-            storeFile = file("../nerdcalci-release-key.jks")
-            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
-            keyAlias = "nerdcalci"
-            keyPassword = System.getenv("KEY_PASSWORD") ?: ""
-        }
-    }
-
-    buildTypes {
-        release {
-            signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-        }
-    }
-}
-```
-
-#### 3. Build Signed APK
+To build a signed APK locally using the same injection method as CI:
 
 ```bash
-export KEYSTORE_PASSWORD="your-keystore-password"
-export KEY_PASSWORD="your-key-password"
-./gradlew assembleRelease
+./gradlew assembleRelease \
+  -Pandroid.injected.signing.store.file=$(pwd)/release.jks \
+  -Pandroid.injected.signing.store.password='keytore_password_here' \
+  -Pandroid.injected.signing.key.alias=nerdcalci \
+  -Pandroid.injected.signing.key.password='key_password_here'
 ```
+
 
 ## F-Droid Submission
 

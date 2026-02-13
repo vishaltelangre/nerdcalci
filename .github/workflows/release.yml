@@ -66,8 +66,16 @@ jobs:
           echo "::warning file=$CHANGELOG_FILE::Changelog not found. Using default release notes."
         fi
 
+    - name: Decode Keystore
+      run: echo "${{ secrets.KEYSTORE_FILE }}" | base64 -d > signing-key.jks
+
     - name: Build Release APK
-      run: ./gradlew assembleRelease
+      run: |
+        ./gradlew assembleRelease \
+          -Pandroid.injected.signing.store.file=$(pwd)/signing-key.jks \
+          -Pandroid.injected.signing.store.password='${{ secrets.KEYSTORE_PASSWORD }}' \
+          -Pandroid.injected.signing.key.alias='${{ secrets.KEY_ALIAS }}' \
+          -Pandroid.injected.signing.key.password='${{ secrets.KEY_PASSWORD }}'
 
     - name: Find APK
       run: |
