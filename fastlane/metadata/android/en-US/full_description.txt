@@ -2,6 +2,7 @@ NerdCalci is a powerful calculator designed for nerds and power users who need m
 
 Features:
 
+• Offline - Works without internet
 • Variable Support - Define variables and reuse them in calculations
 • Percentage Calculations - Natural syntax like "20% of 50000" or "15% off 1000"
 • Syntax Highlighting - Color-coded numbers, variables, operators, and comments
@@ -9,6 +10,7 @@ Features:
 • Comments - Document your calculations with # comments
 • Multiple Files - Organize calculations in separate files with auto-save
 • Pin Files - Keep frequently used files at the top
+• Duplicate Files - Create a copy of a file with a new name
 • Undo/Redo - Up to 30 steps per file
 • Import/Export - Share files in .nerdcalci format
 • Copy with Results - Copy calculations with their results

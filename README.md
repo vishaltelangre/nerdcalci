@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>A nerd-style calculator for Android with variable support, syntax highlighting, and file-based sessions.</strong>
+  <strong>Powerful Android calculator app for power users and nerds with variable support, syntax highlighting, and file-based sessions.</strong>
 </p>
 
 ## Screenshots
