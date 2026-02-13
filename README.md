@@ -53,22 +53,14 @@
 - **Copy with Results**: Copy file content with calculated results to clipboard
 
 ### And More...
+- **Offline**: Works without internet
 - **Undo/Redo**: Up to 30 steps per file
 - **Dark/Light Theme**: System, dark, or light mode
 - **Real-time Results**: See calculations update as you type
 
-## Installation
+## Download/Install
 
-### From GitHub Releases (Recommended)
-
-1. Go to the [Releases](https://github.com/vishaltelangre/nerdcalci/releases/latest) page
-2. Download the latest APK file
-3. Transfer to your Android device
-4. Enable "Install from Unknown Sources" if prompted
-5. Open the APK and install
-6. Start calculating!
-
-### From F-Droid
+### From F-Droid (Recommended)
 
 _Submission in progress - will be available soon!_
 
@@ -76,10 +68,15 @@ _Submission in progress - will be available soon!_
     alt="Get it on F-Droid"
     height="80">](https://f-droid.org/packages/com.vishaltelangre.nerdcalci/)
 
-### From GitHub
-1. Download the latest release from the [Releases](https://github.com/vishaltelangre/nerdcalci/releases) page
-2. Install the APK file
-3. Open the app and start using it
+
+### From GitHub Releases
+
+1. Go to the [Releases](https://github.com/vishaltelangre/nerdcalci/releases/latest) page
+2. Download the latest APK file
+3. Transfer to your Android device
+4. Enable "Install from Unknown Sources" if prompted
+5. Open the APK and install
+6. Start calculating!
 
 ### From Source
 1. Clone the repository:
