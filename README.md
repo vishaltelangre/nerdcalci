@@ -38,6 +38,30 @@
   price = 1000  # base price
   tax = 18% of price  # 180
   ```
+- **Mathematical Functions**: Built-in support for common math functions (see [exp4j documentation](https://redmine.riddler.com.ar/projects/exp4j/wiki/Built_in_Functions) for more details)
+  ```
+  sqrt(16)           # 4
+  sqrt 16            # 4
+  sin(pi/2)          # 1
+  log10(1000)        # 3
+  pow(2, 8)          # 256
+  abs(-42)           # 42
+
+  # Calculate circle area
+  radius = 5
+  area = pi() * pow(radius, 2)  # 78.54
+
+  # Convert degrees to radians and calculate sine
+  degrees = 45
+  radians = degrees * pi / 180
+  result = sin(radians)  # 0.71
+
+  # Exponential growth
+  principal = 1000
+  rate = 0.05
+  time = 10
+  amount = principal * exp(rate * time)  # 1648.72
+  ```
 
 ### Editor Features
 - **Syntax Highlighting**: Color-coded variables, numbers, operators, and comments
