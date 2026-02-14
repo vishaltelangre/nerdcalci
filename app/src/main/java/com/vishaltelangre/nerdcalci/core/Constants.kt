@@ -12,7 +12,7 @@ object Constants {
     const val DATABASE_NAME = "calci-db"
 
     // General info
-    const val SOURCE_CODE_URL = "https://github.com/vishaltelangre/nerdcalci"
+    const val SOURCE_CODE_URL = "https://github.com/vishaltelangre/NerdCalci"
     const val DEVELOPER_NAME = "Vishal Telangre"
     const val LICENSE = "GNU General Public License v3.0"
 

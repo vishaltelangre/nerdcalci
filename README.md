@@ -95,7 +95,7 @@ _Submission in progress - will be available soon!_
 
 ### From GitHub Releases
 
-1. Go to the [Releases](https://github.com/vishaltelangre/nerdcalci/releases/latest) page
+1. Go to the [Releases](https://github.com/vishaltelangre/NerdCalci/releases/latest) page
 2. Download the latest APK file
 3. Transfer to your Android device
 4. Enable "Install from Unknown Sources" if prompted
@@ -105,7 +105,7 @@ _Submission in progress - will be available soon!_
 ### From Source
 1. Clone the repository:
    ```bash
-   git clone https://github.com/vishaltelangre/nerdcalci.git
+   git clone https://github.com/vishaltelangre/NerdCalci.git
    cd nerdcalci
    ```
 

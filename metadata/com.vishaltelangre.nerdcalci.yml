@@ -5,18 +5,18 @@ Categories:
 License: GPL-3.0-or-later
 AuthorName: Vishal Telangre
 AuthorEmail: vishaltelangre@gmail.com
-WebSite: https://github.com/vishaltelangre/nerdcalci
-SourceCode: https://github.com/vishaltelangre/nerdcalci
-IssueTracker: https://github.com/vishaltelangre/nerdcalci/issues
-Changelog: https://github.com/vishaltelangre/nerdcalci/releases
+WebSite: https://github.com/vishaltelangre/NerdCalci
+SourceCode: https://github.com/vishaltelangre/NerdCalci
+IssueTracker: https://github.com/vishaltelangre/NerdCalci/issues
+Changelog: https://github.com/vishaltelangre/NerdCalci/releases
 Donate: https://github.com/sponsors/vishaltelangre
 
 AutoName: NerdCalci
 
 RepoType: git
-Repo: https://github.com/vishaltelangre/nerdcalci.git
+Repo: https://github.com/vishaltelangre/NerdCalci.git
 Binaries: 
-  https://github.com/vishaltelangre/nerdcalci/releases/download/v%v/NerdCalci-v%v.apk
+  https://github.com/vishaltelangre/NerdCalci/releases/download/v%v/NerdCalci-v%v.apk
 
 Builds:
   - versionName: 1.0.0

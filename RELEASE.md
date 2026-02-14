@@ -81,7 +81,7 @@ Once you push the commit, GitHub Actions will automatically:
 - Create git tag `v1.0.1` automatically
 - Create a GitHub release with the APK attached
 
-Check the release at: https://github.com/vishaltelangre/nerdcalci/releases
+Check the release at: https://github.com/vishaltelangre/NerdCalci/releases
 
 **No manual tagging required!** The version in gradle is the single source of truth.
 
