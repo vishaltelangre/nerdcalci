@@ -814,7 +814,6 @@ private fun LineRow(
     // Handle programmatic focus requests (from navigation or deletion)
     LaunchedEffect(shouldFocus, focusCursorPos) {
         if (shouldFocus && focusCursorPos != null) {
-            delay(16) // Minimal delay (1 frame) to prevent keyboard flickering
             focusRequester.requestFocus()
 
             // Set cursor position - focusCursorPos is the desired position in the expression
