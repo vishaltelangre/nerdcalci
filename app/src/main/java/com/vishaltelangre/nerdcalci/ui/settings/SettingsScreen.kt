@@ -15,30 +15,27 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,10 +54,10 @@ fun SettingsScreen(
     onThemeChange: (String) -> Unit,
     onExport: () -> Unit,
     onImport: () -> Unit,
+    onHelp: () -> Unit,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    var showThemeDialog by remember { mutableStateOf(false) }
 
     // Get app name from strings.xml
     val appName = context.getString(com.vishaltelangre.nerdcalci.R.string.app_name)
@@ -69,7 +66,7 @@ fun SettingsScreen(
             val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
             val versionName = packageInfo.versionName ?: "Unknown"
             val versionCode = packageInfo.longVersionCode
-            "$versionName ($versionCode)"
+            "v$versionName ($versionCode)"
         } catch (e: Exception) {
             "Unknown"
         }
@@ -98,18 +95,44 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             // Appearance Section
-            SettingsSection(title = "Appearance")
+            SettingsSection(title = "Theme")
 
-            SettingsItem(
-                icon = Icons.Default.DarkMode,
-                title = "Theme",
-                subtitle = when (currentTheme) {
-                    "light" -> "Light"
-                    "dark" -> "Dark"
-                    else -> "System default"
-                },
-                onClick = { showThemeDialog = true }
-            )
+            SingleChoiceSegmentedButtonRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                val options = listOf(
+                    Triple("light", "Light", Icons.Default.LightMode),
+                    Triple("dark", "Dark", Icons.Default.DarkMode),
+                    Triple("system", "System", Icons.Default.DarkMode)
+                )
+
+                options.forEachIndexed { index, (value, label, icon) ->
+                    SegmentedButton(
+                        selected = currentTheme == value,
+                        onClick = { onThemeChange(value) },
+                        shape = SegmentedButtonDefaults.itemShape(
+                            index = index,
+                            count = options.size
+                        ),
+                        icon = {
+                            SegmentedButtonDefaults.Icon(active = currentTheme == value) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = label,
+                                    modifier = Modifier.padding(4.dp)
+                                )
+                            }
+                        }
+                    ) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                }
+            }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
@@ -118,16 +141,28 @@ fun SettingsScreen(
 
             SettingsItem(
                 icon = Icons.Default.FileUpload,
-                title = "Export All Files",
+                title = "Export",
                 subtitle = "Export all files as ZIP",
                 onClick = onExport
             )
 
             SettingsItem(
                 icon = Icons.Default.FileDownload,
-                title = "Import Files",
-                subtitle = "Import from ZIP (existing files with the same name will be replaced)",
+                title = "Import",
+                subtitle = "Import files from ZIP\n(existing files with the same name will be replaced)",
                 onClick = onImport
+            )
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            // Help Section
+            SettingsSection(title = "Help")
+
+            SettingsItem(
+                icon = Icons.AutoMirrored.Filled.Help,
+                title = "Help",
+                subtitle = "View the calculator usage guide and documentation",
+                onClick = onHelp
             )
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -152,12 +187,45 @@ fun SettingsScreen(
                 }
             )
 
-            SettingsItem(
-                icon = Icons.Default.Info,
-                title = "Developer",
-                subtitle = Constants.DEVELOPER_NAME,
-                onClick = null
-            )
+            // Developer with Buy Me a Coffee
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Developer",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = Constants.DEVELOPER_NAME,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://buymeacoffee.com/vishaltelangre"))
+                        context.startActivity(intent)
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Coffee,
+                        contentDescription = "Buy me a coffee",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
 
             SettingsItem(
                 icon = Icons.Default.Info,
@@ -166,35 +234,6 @@ fun SettingsScreen(
                 onClick = null
             )
         }
-    }
-
-    // Theme selection dialog
-    if (showThemeDialog) {
-        AlertDialog(
-            onDismissRequest = { showThemeDialog = false },
-            title = { Text("Choose Theme") },
-            text = {
-                Column {
-                    ThemeOption("Light", currentTheme == "light") {
-                        onThemeChange("light")
-                        showThemeDialog = false
-                    }
-                    ThemeOption("Dark", currentTheme == "dark") {
-                        onThemeChange("dark")
-                        showThemeDialog = false
-                    }
-                    ThemeOption("System default", currentTheme == "system") {
-                        onThemeChange("system")
-                        showThemeDialog = false
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showThemeDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
     }
 }
 
@@ -242,33 +281,12 @@ private fun SettingsItem(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-    }
-}
-
-@Composable
-private fun ThemeOption(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        RadioButton(
-            selected = selected,
-            onClick = onClick
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(label)
     }
 }

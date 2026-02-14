@@ -192,6 +192,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                     exportLauncher.launch(filename)
                 },
                 onImport = { importLauncher.launch(arrayOf("application/zip")) },
+                onHelp = { navController.navigate("help") },
                 onBack = { navController.popBackStack() }
             )
         }
