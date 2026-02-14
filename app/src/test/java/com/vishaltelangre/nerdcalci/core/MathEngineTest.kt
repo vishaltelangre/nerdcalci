@@ -152,14 +152,42 @@ class MathEngineTest {
     }
 
     @Test
-    fun `variable with spaces is normalized`() {
+    fun `variable with underscores in name`() {
         val lines = listOf(
-            createLine("monthly salary = 5000", sortOrder = 0),
-            createLine("monthly salary * 12", sortOrder = 1)
+            createLine("monthly_salary = 5000", sortOrder = 0),
+            createLine("monthly_salary * 12", sortOrder = 1),
+            createLine("monthly_salary", sortOrder = 2)
         )
         val result = MathEngine.calculate(lines)
         assertEquals("5000", result[0].result)
         assertEquals("60000", result[1].result)
+        assertEquals("5000", result[2].result)
+    }
+
+    @Test
+    fun `variable with underscores in percentage expressions`() {
+        val lines =
+                listOf(
+                        createLine("rate = 10", sortOrder = 0),
+                        createLine("rate_with_disc = 10% off rate", sortOrder = 1),
+                        createLine("rate_with_disc", sortOrder = 2)
+                )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10", result[0].result)
+        assertEquals("9", result[1].result)
+        assertEquals("9", result[2].result)
+    }
+
+    @Test
+    fun `undefined variable returns error not implicit multiplication`() {
+        // rate2 (without underscore) is not defined, should error out instead of being parsed as rate * 2
+        val lines = listOf(
+            createLine("rate = 10", sortOrder = 0),
+            createLine("rate2", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10", result[0].result)
+        assertEquals("Err", result[1].result)
     }
 
     @Test
@@ -337,15 +365,6 @@ class MathEngineTest {
     }
 
     @Test
-    fun `invalid variable name is processed by exp4j`() {
-        // exp4j doesn't strictly validate variable names starting with numbers
-        // This actually parses as "123 * invalid = 5" which evaluates to just 5
-        val lines = listOf(createLine("123invalid = 5"))
-        val result = MathEngine.calculate(lines)
-        assertEquals("5", result[0].result) // exp4j handles this
-    }
-
-    @Test
     fun `complex calculation with variables and percentages`() {
         val lines = listOf(
             createLine("basePrice = 1000", sortOrder = 0),
@@ -488,5 +507,192 @@ class MathEngineTest {
         val lines = listOf(createLine("10    +    20"))
         val result = MathEngine.calculate(lines)
         assertEquals("30", result[0].result)
+    }
+
+    @Test
+    fun `invalid variable name with spaces returns error`() {
+        val lines = listOf(createLine("rate with disc = 10"))
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+    }
+
+    @Test
+    fun `invalid variable name starting with digit returns error`() {
+        val lines = listOf(createLine("2rate = 10"))
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+    }
+
+    @Test
+    fun `invalid variable name with special characters returns error`() {
+        val lines = listOf(createLine("rate-disc = 10"))
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+    }
+
+    @Test
+    fun `valid variable names with underscores work`() {
+        val lines = listOf(
+            createLine("rate_with_disc = 10", sortOrder = 0),
+            createLine("rate_2 = 11", sortOrder = 1),
+            createLine("_private2 = 5", sortOrder = 2),
+            createLine("__internal__ = 3", sortOrder = 3),
+            createLine("_private2 + __internal__", sortOrder = 4)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10", result[0].result)
+        assertEquals("11", result[1].result)
+        assertEquals("5", result[2].result)
+        assertEquals("3", result[3].result)
+        assertEquals("8", result[4].result)
+    }
+
+    // Built-in Functions Tests
+
+    @Test
+    fun `trigonometric functions work`() {
+        val lines = listOf(
+            createLine("sin(0)", sortOrder = 0),
+            createLine("cos(0)", sortOrder = 1),
+            createLine("tan(0)", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("0", result[0].result)
+        assertEquals("1", result[1].result)
+        assertEquals("0", result[2].result)
+    }
+
+    @Test
+    fun `inverse trigonometric functions work`() {
+        val lines = listOf(
+            createLine("asin(0)", sortOrder = 0),
+            createLine("acos(1)", sortOrder = 1),
+            createLine("atan(0)", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("0", result[0].result)
+        assertEquals("0", result[1].result)
+        assertEquals("0", result[2].result)
+    }
+
+    @Test
+    fun `logarithm functions work`() {
+        val lines = listOf(
+            createLine("log10(1000)", sortOrder = 0),
+            createLine("log2(8)", sortOrder = 1),
+            createLine("log(e())", sortOrder = 2)  // Natural log of e should be 1
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("3", result[0].result)
+        assertEquals("3", result[1].result)
+        assertEquals("1", result[2].result)
+    }
+
+    @Test
+    fun `power and root functions work`() {
+        val lines = listOf(
+            createLine("sqrt(16)", sortOrder = 0),
+            createLine("cbrt(27)", sortOrder = 1),
+            createLine("pow(2, 8)", sortOrder = 2),
+            createLine("exp(0)", sortOrder = 3)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("4", result[0].result)
+        assertEquals("3", result[1].result)
+        assertEquals("256", result[2].result)
+        assertEquals("1", result[3].result)
+    }
+
+    @Test
+    fun `rounding functions work`() {
+        val lines = listOf(
+            createLine("abs(-42)", sortOrder = 0),
+            createLine("floor(3.7)", sortOrder = 1),
+            createLine("ceil(3.2)", sortOrder = 2),
+            createLine("signum(-5)", sortOrder = 3),
+            createLine("signum(0)", sortOrder = 4),
+            createLine("signum(5)", sortOrder = 5)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("42", result[0].result)
+        assertEquals("3", result[1].result)
+        assertEquals("4", result[2].result)
+        assertEquals("-1", result[3].result)
+        assertEquals("0", result[4].result)
+        assertEquals("1", result[5].result)
+    }
+
+    @Test
+    fun `constants work`() {
+        val lines = listOf(
+            createLine("pi()", sortOrder = 0),
+            createLine("e()", sortOrder = 1),
+            createLine("pi() * 2", sortOrder = 2),
+            createLine("e() + 1", sortOrder = 3)
+        )
+        val result = MathEngine.calculate(lines)
+
+        // Check that pi() returns approximately 3.14 (rounded for display)
+        val piValue = result[0].result.toDoubleOrNull()
+        assertNotNull("pi() should return a number, got: ${result[0].result}", piValue)
+        assertTrue("pi() should be ~3.14, got: $piValue", piValue!! >= 3.14 && piValue <= 3.15)
+
+        // Check that e() returns approximately 2.72 (rounded for display)
+        val eValue = result[1].result.toDoubleOrNull()
+        assertNotNull("e() should return a number, got: ${result[1].result}", eValue)
+        assertTrue("e() should be ~2.72, got: $eValue", eValue!! >= 2.71 && eValue <= 2.73)
+    }
+
+    @Test
+    fun `functions can be used with variables`() {
+        val lines = listOf(
+            createLine("radius = 5", sortOrder = 0),
+            createLine("area = pi * pow(radius, 2)", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("5", result[0].result)
+        // Area should be approximately 78.54
+        assertTrue(result[1].result.toDouble() > 78 && result[1].result.toDouble() < 79)
+    }
+
+    @Test
+    fun `nested functions work`() {
+        val lines = listOf(
+            createLine("sqrt(pow(3, 2) + pow(4, 2))", sortOrder = 0),
+            createLine("abs(sin(0) - 1)", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("5", result[0].result) // Pythagorean theorem: sqrt(9 + 16) = 5
+        assertEquals("1", result[1].result) // abs(0 - 1) = 1
+    }
+
+    @Test
+    fun `functions are case sensitive`() {
+        val lines = listOf(
+            createLine("SQRT(16)", sortOrder = 0),
+            createLine("SIN(0)", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+        assertEquals("Err", result[1].result)
+    }
+
+    @Test
+    fun `functions work with and without parentheses for single argument`() {
+        val lines = listOf(
+            createLine("floor(3.7)", sortOrder = 0),
+            createLine("floor 3.7", sortOrder = 1),
+            createLine("sqrt(16)", sortOrder = 2),
+            createLine("sqrt 16", sortOrder = 3),
+            createLine("abs(-42)", sortOrder = 4),
+            createLine("abs -42", sortOrder = 5)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("3", result[0].result)
+        assertEquals("3", result[1].result)
+        assertEquals("4", result[2].result)
+        assertEquals("4", result[3].result)
+        assertEquals("42", result[4].result)
+        assertEquals("42", result[5].result)
     }
 }

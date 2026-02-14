@@ -44,18 +44,6 @@ object MathEngine {
         return result
     }
 
-    // Preprocess variable names
-    // Note: exp4j doesn't support spaces in variable names, so we normalize them
-    // Examples:
-    //   "monthly salary = 5000" → "monthly_salary = 5000"
-    //   "base price + 100" → "base_price + 100"
-    private fun preprocessVariableNames(expr: String): String {
-        return expr.replace(Regex("""([a-zA-Z][a-zA-Z0-9\s]+?)(\s*[=+\-*/^()])""")) { matchResult ->
-            val varName = matchResult.groupValues[1].trim()
-            val operator = matchResult.groupValues[2]
-            varName.replace(" ", "_") + operator
-        }
-    }
 
     /**
      * Calculate results for all lines in a file, maintaining variable state across lines.
@@ -63,7 +51,6 @@ object MathEngine {
      * Processing pipeline:
      * - Strip comments (anything after #)
      * - Normalize Unicode operators (× → *, ÷ → /)
-     * - Preprocess variable names (spaces → underscores)
      * - Preprocess percentage expressions (% of, % off, +%, -%)
      * - Parse variable assignment (if present)
      * - Evaluate expression using exp4j
@@ -96,7 +83,6 @@ object MathEngine {
 
                 // Normalize and preprocess the expression
                 var processed = normalizeOperators(exprWithoutComments)
-                processed = preprocessVariableNames(processed)
                 processed = preprocessPercentages(processed)
 
                 // Parse variable assignment (e.g., price = 100)
@@ -107,8 +93,36 @@ object MathEngine {
                     null to processed.trim()
                 }
 
+                // Validate variable name if this is an assignment
+                if (varName != null && !varName.matches(Regex(Constants.VARIABLE_NAME_PATTERN))) {
+                    return@map line.copy(result = "Err")
+                }
+
+                // exp4j built-in functions (exclude from undefined variable check)
+                // https://redmine.riddler.com.ar/projects/exp4j/wiki/Built_in_Functions
+                val builtInFunctions = setOf(
+                    "sin", "cos", "tan", "asin", "acos", "atan",
+                    "sinh", "cosh", "tanh",
+                    "log", "log10", "log2", "log1p",
+                    "sqrt", "cbrt", "abs", "floor", "ceil", "signum",
+                    "exp", "expm1", "pow", "e", "pi"
+                )
+
+                // Validate that expression doesn't contain undefined variables
+                // This prevents issues like "rate2" being tokenized as "rate" + "2" by exp4j
+                val variablePattern = Regex("""[a-zA-Z_][a-zA-Z0-9_]*""")
+                variablePattern.findAll(exprToEval).forEach { match ->
+                    val varRef = match.value
+                    // Check if this looks like a variable but isn't defined or a built-in function
+                    if (!variables.containsKey(varRef) && !builtInFunctions.contains(varRef.lowercase())) {
+                        // It's an undefined variable - return error
+                        return@map line.copy(result = "Err")
+                    }
+                }
+
                 // Build expression with exp4j
                 val builder = ExpressionBuilder(exprToEval)
+                    .implicitMultiplication(false)  // Disable implicit multiplication
 
                 // Add all existing variables to the expression context
                 if (variables.isNotEmpty()) {

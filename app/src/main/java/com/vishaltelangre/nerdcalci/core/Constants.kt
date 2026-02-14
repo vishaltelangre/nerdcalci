@@ -26,4 +26,13 @@ object Constants {
     // Export/Import
     const val EXPORT_FILE_EXTENSION = ".nerdcalci"
     const val EXPORT_MIME_TYPE = "application/zip"
+
+    // Variable naming
+    /**
+     * Regex pattern for valid variable names in calculator expressions.
+     * Variables must start with a letter or underscore, followed by letters, digits, or underscores.
+     * Examples: "price", "rate_2", "rate3", "_private", "__internal__"
+     * Invalid: "2rate", "rate-disc", "rate with disc"
+     */
+    const val VARIABLE_NAME_PATTERN = "^[a-zA-Z_][a-zA-Z0-9_]*$"
 }

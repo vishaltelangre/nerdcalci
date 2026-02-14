@@ -175,16 +175,21 @@ private fun applySyntaxHighlighting(
  * Extract variable names from calculator expressions for autocomplete.
  *
  * Parses assignment statements (e.g., "price = 100") and extracts the variable name.
- * Supports both underscore and space-separated names:
- * - "monthly_salary = 5000" → "monthly_salary"
- * - "monthly salary = 5000" → "monthly salary"
+ * Variable names can contain letters, digits, and underscores (no spaces):
+ * - "rate_with_disc = 10" → "rate_with_disc"
+ * - "rate2 = 10" → "rate2"
  *
- * @return Set of variable names defined in the file
+ * Only extracts variables from lines BEFORE the specified sortOrder to prevent
+ * forward references.
+ *
+ * @param lines All lines in the file
+ * @param upToSortOrder Only extract variables from lines with sortOrder < this value
+ * @return Set of variable names defined before the specified line
  */
 @OptIn(ExperimentalMaterial3Api::class)
-private fun extractVariables(lines: List<LineEntity>): Set<String> {
+private fun extractVariables(lines: List<LineEntity>, upToSortOrder: Int): Set<String> {
     val variables = mutableSetOf<String>()
-    lines.forEach { line ->
+    lines.filter { it.sortOrder < upToSortOrder }.forEach { line ->
         // Strip comments first
         val hashIndex = line.expression.indexOf('#')
         val exprWithoutComment = if (hashIndex >= 0) {
@@ -193,8 +198,8 @@ private fun extractVariables(lines: List<LineEntity>): Set<String> {
             line.expression
         }
 
-        // Match variable assignments: "var name = ..." (can include spaces)
-        val assignmentRegex = Regex("""^\s*([a-zA-Z][a-zA-Z0-9\s]*?)\s*=""")
+        val varNamePattern = Constants.VARIABLE_NAME_PATTERN.removePrefix("^").removeSuffix("$")
+        val assignmentRegex = Regex("""^\s*($varNamePattern)\s*=""")
         assignmentRegex.find(exprWithoutComment)?.groupValues?.get(1)?.let {
             variables.add(it.trim())
         }
@@ -267,9 +272,6 @@ fun CalculatorScreen(
     val density = LocalDensity.current
     val imeInsets = WindowInsets.ime
     val isKeyboardVisible = imeInsets.getBottom(density) > 0
-
-    // Extract all defined variables for autocomplete
-    val availableVariables = remember(lines) { extractVariables(lines) }
 
     // Theme-aware colors - respect app theme setting, not system
     val currentTheme by viewModel.currentTheme.collectAsState()
@@ -532,6 +534,9 @@ fun CalculatorScreen(
                 modifier = Modifier.fillMaxSize()
             ) {
                 itemsIndexed(lines) { index, line ->
+                    // Compute available variables for this line (only from previous lines)
+                    val availableVariables = extractVariables(lines, line.sortOrder)
+
                     LineRow(
                         lineNumber = index + 1,
                         line = line,
