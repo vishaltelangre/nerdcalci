@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>Powerful Android calculator app for power users and nerds with variable support, syntax highlighting, and file-based sessions.</strong>
+  <strong>Fully offline Android calculator app for power users with variable support, syntax highlighting, file-based sessions, and more.</strong>
 </p>
 
 ## Screenshots
@@ -73,7 +73,8 @@
 - **Auto-save**: Changes are saved automatically
 - **Pin Files**: Keep important files at the top (max 10 pinned files)
 - **Duplicate Files**: Create a copy of a file with a new name
-- **Import/Export**: Share files in `.nerdcalci` format (ZIP)
+- **Backups**: Automatically or manually backup your files to app storage or a custom folder
+- **Restore from backups**: Restore your files from backups
 - **Copy with Results**: Copy file content with calculated results to clipboard
 
 ### And More...

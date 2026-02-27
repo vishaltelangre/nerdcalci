@@ -12,7 +12,8 @@ Features:
 • Pin Files - Keep frequently used files at the top
 • Duplicate Files - Create a copy of a file with a new name
 • Undo/Redo - Up to 30 steps per file
-• Import/Export - Share files in .nerdcalci format
+• Backups - Automatically or manually backup your files to app storage or a custom folder
+• Restore from backups - Restore your files from backups
 • Copy with Results - Copy calculations with their results
 • Dark/Light Theme - System, dark, or light mode support
 • Line Numbers - Easy reference and navigation
