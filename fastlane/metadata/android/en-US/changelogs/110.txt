@@ -1,0 +1,5 @@
+- Added automatic backups with configurable frequency (daily or weekly).
+- Default backup location now uses app storage, with optional custom folder support.
+- Added "Back up now" and "Restore from backup" flows with clearer confirmation dialogs.
+- Unified restore experience across Settings and Home screens.
+- Backup retention now keeps the latest 30 backups.
