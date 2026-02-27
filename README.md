@@ -92,10 +92,20 @@ _Submission in progress - will be available soon!_
     alt="Get it on F-Droid"
     height="80">](https://f-droid.org/packages/com.vishaltelangre.nerdcalci/)
 
+### From Obtainium
+
+[<img src="https://github.com/user-attachments/assets/713d71c5-3dec-4ec4-a3f2-8d28d025a9c6"
+    alt="Get it on Obtainium" height="80">](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.vishaltelangre.nerdcalci%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fvishaltelangre%2FNerdCalci%22%2C%22author%22%3A%22vishaltelangre%22%2C%22name%22%3A%22NerdCalci%22%2C%22supportFixedAPKURL%22%3Afalse%7D)
+
+You need to install [Obtainium](https://github.com/ImranR98/Obtainium) first on your Android device.
 
 ### From GitHub Releases
 
-1. Go to the [Releases](https://github.com/vishaltelangre/NerdCalci/releases/latest) page
+[<img src="https://github.com/machiav3lli/oandbackupx/raw/034b226cea5c1b30eb4f6a6f313e4dadcbb0ece4/badge_github.png"
+    alt="Get it on GitHub"
+    height="80">](https://github.com/vishaltelangre/NerdCalci/releases)
+
+1. Go to the [Releases](https://github.com/vishaltelangre/NerdCalci/releases) page
 2. Download the latest APK file
 3. Transfer to your Android device
 4. Enable "Install from Unknown Sources" if prompted
