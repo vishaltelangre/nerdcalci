@@ -84,7 +84,7 @@ fun HomeScreen(
     onFileClick: (Long) -> Unit,
     onSettingsClick: () -> Unit,
     onHelpClick: () -> Unit,
-    onImportClick: () -> Unit
+    onRestoreClick: () -> Unit
 ) {
     val context = LocalContext.current
     val files by viewModel.allFiles.collectAsState(initial = emptyList())
@@ -190,12 +190,12 @@ fun HomeScreen(
                         }
                         Spacer(modifier = Modifier.height(10.dp))
                         OutlinedButton(
-                            onClick = onImportClick,
+                            onClick = onRestoreClick,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(Icons.Default.UploadFile, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Import files")
+                            Text("Restore from backup")
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         TextButton(

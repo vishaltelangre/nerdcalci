@@ -26,6 +26,7 @@ object Constants {
     // Export/Import
     const val EXPORT_FILE_EXTENSION = ".nerdcalci"
     const val EXPORT_MIME_TYPE = "application/zip"
+    const val DEFAULT_BACKUP_KEEP_COUNT = 30
 
     // Variable naming
     /**

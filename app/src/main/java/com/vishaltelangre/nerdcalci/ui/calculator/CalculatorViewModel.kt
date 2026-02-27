@@ -9,6 +9,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.core.MathEngine
+import com.vishaltelangre.nerdcalci.data.backup.AutoBackupScheduler
+import com.vishaltelangre.nerdcalci.data.backup.BackupFileInfo
+import com.vishaltelangre.nerdcalci.data.backup.BackupFrequency
+import com.vishaltelangre.nerdcalci.data.backup.BackupLocationMode
+import com.vishaltelangre.nerdcalci.data.backup.BackupManager
 import com.vishaltelangre.nerdcalci.data.local.CalculatorDao
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
@@ -16,14 +21,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.util.zip.ZipEntry
-import java.util.zip.ZipInputStream
-import java.util.zip.ZipOutputStream
 
 data class FileSnapshot(
     val lines: List<LineEntity>
@@ -45,10 +44,102 @@ class CalculatorViewModel(
     )
     val currentTheme: StateFlow<String> = _currentTheme
 
+    private val _autoBackupEnabled = MutableStateFlow(
+        prefs?.getBoolean(BackupManager.PREF_AUTO_BACKUP_ENABLED, true) ?: true
+    )
+    val autoBackupEnabled: StateFlow<Boolean> = _autoBackupEnabled
+
+    private val _backupFrequency = MutableStateFlow(
+        BackupFrequency.fromPrefValue(
+            prefs?.getString(
+                BackupManager.PREF_AUTO_BACKUP_FREQUENCY,
+                BackupFrequency.DAILY.prefValue
+            )
+        )
+    )
+    val backupFrequency: StateFlow<BackupFrequency> = _backupFrequency
+
+    private val _backupLocationMode = MutableStateFlow(
+        BackupLocationMode.fromPrefValue(
+            prefs?.getString(
+                BackupManager.PREF_AUTO_BACKUP_LOCATION_MODE,
+                BackupLocationMode.APP_STORAGE.prefValue
+            )
+        )
+    )
+    val backupLocationMode: StateFlow<BackupLocationMode> = _backupLocationMode
+
+    private val _customBackupFolderUri = MutableStateFlow(
+        prefs?.getString(BackupManager.PREF_AUTO_BACKUP_CUSTOM_FOLDER_URI, null)
+    )
+    val customBackupFolderUri: StateFlow<String?> = _customBackupFolderUri
+
+    private val _availableBackups = MutableStateFlow<List<BackupFileInfo>>(emptyList())
+    val availableBackups: StateFlow<List<BackupFileInfo>> = _availableBackups
+    private val _lastBackupAt = MutableStateFlow(
+        prefs?.getLong(BackupManager.PREF_LAST_BACKUP_AT, 0L)?.takeIf { it > 0L }
+    )
+    val lastBackupAt: StateFlow<Long?> = _lastBackupAt
+
     fun setTheme(theme: String) {
         _currentTheme.value = theme
         // Persist theme preference
         prefs?.edit()?.putString(PREF_THEME, theme)?.apply()
+    }
+
+    fun setAutoBackupEnabled(context: Context, enabled: Boolean) {
+        _autoBackupEnabled.value = enabled
+        prefs?.edit()?.putBoolean(BackupManager.PREF_AUTO_BACKUP_ENABLED, enabled)?.apply()
+        AutoBackupScheduler.sync(context, prefs ?: BackupManager.prefs(context))
+    }
+
+    fun setBackupFrequency(context: Context, frequency: BackupFrequency) {
+        _backupFrequency.value = frequency
+        prefs?.edit()?.putString(BackupManager.PREF_AUTO_BACKUP_FREQUENCY, frequency.prefValue)?.apply()
+        AutoBackupScheduler.sync(context, prefs ?: BackupManager.prefs(context))
+    }
+
+    fun setBackupLocationToAppStorage(context: Context) {
+        _backupLocationMode.value = BackupLocationMode.APP_STORAGE
+        _customBackupFolderUri.value = null
+        prefs?.edit()
+            ?.putString(BackupManager.PREF_AUTO_BACKUP_LOCATION_MODE, BackupLocationMode.APP_STORAGE.prefValue)
+            ?.remove(BackupManager.PREF_AUTO_BACKUP_CUSTOM_FOLDER_URI)
+            ?.apply()
+        AutoBackupScheduler.sync(context, prefs ?: BackupManager.prefs(context))
+        refreshBackups(context)
+    }
+
+    fun setCustomBackupFolder(context: Context, uri: Uri) {
+        _backupLocationMode.value = BackupLocationMode.CUSTOM_FOLDER
+        _customBackupFolderUri.value = uri.toString()
+        prefs?.edit()
+            ?.putString(BackupManager.PREF_AUTO_BACKUP_LOCATION_MODE, BackupLocationMode.CUSTOM_FOLDER.prefValue)
+            ?.putString(BackupManager.PREF_AUTO_BACKUP_CUSTOM_FOLDER_URI, uri.toString())
+            ?.apply()
+        AutoBackupScheduler.sync(context, prefs ?: BackupManager.prefs(context))
+        refreshBackups(context)
+    }
+
+    fun refreshBackups(context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _availableBackups.value = BackupManager.listBackups(context)
+            _lastBackupAt.value = (prefs ?: BackupManager.prefs(context))
+                .getLong(BackupManager.PREF_LAST_BACKUP_AT, 0L)
+                .takeIf { it > 0L }
+        }
+    }
+
+    suspend fun backupNow(context: Context): Result<String> {
+        val result = BackupManager.backupNow(context, dao)
+        refreshBackups(context)
+        return result
+    }
+
+    suspend fun restoreFromBackup(context: Context, backup: BackupFileInfo): Result<String> {
+        val result = BackupManager.restoreFromBackup(context, dao, backup)
+        refreshBackups(context)
+        return result
     }
 
     // Undo/Redo stacks with max limit per file
@@ -373,111 +464,12 @@ class CalculatorViewModel(
 
     // Export all files to ZIP
     suspend fun exportAllFiles(context: Context, outputUri: Uri): Result<String> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val filesList = dao.getAllFiles().first()
-
-                if (filesList.isEmpty()) {
-                    return@withContext Result.failure(Exception("No files to export"))
-                }
-
-                var fileCount = 0
-
-                context.contentResolver.openOutputStream(outputUri)?.use { outputStream ->
-                    ZipOutputStream(outputStream).use { zipOut ->
-                        filesList.forEach { file ->
-                            val lines = dao.getLinesForFileSync(file.id)
-                            val content = formatFileContent(lines)
-
-                            val entry = ZipEntry("${file.name}${Constants.EXPORT_FILE_EXTENSION}")
-                            zipOut.putNextEntry(entry)
-                            zipOut.write(content.toByteArray())
-                            zipOut.closeEntry()
-                            fileCount++
-                        }
-                        zipOut.finish()
-                    }
-                } ?: return@withContext Result.failure(Exception("Could not open output stream"))
-
-                Result.success("Exported $fileCount file(s)")
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
-        }
+        return BackupManager.exportAllFiles(context, dao, outputUri)
     }
 
     // Import files from ZIP
     suspend fun importFiles(context: Context, inputUri: Uri): Result<String> {
-        return withContext(Dispatchers.IO) {
-            try {
-                var fileCount = 0
-
-                val existingFilesList = dao.getAllFiles().first()
-
-                context.contentResolver.openInputStream(inputUri)?.use { inputStream ->
-                    ZipInputStream(inputStream).use { zipIn ->
-                        var entry: ZipEntry? = zipIn.nextEntry
-
-                        while (entry != null) {
-                            if (!entry.isDirectory && entry.name.endsWith(Constants.EXPORT_FILE_EXTENSION)) {
-                                val fileName = entry.name.removeSuffix(Constants.EXPORT_FILE_EXTENSION)
-                                val content = BufferedReader(InputStreamReader(zipIn)).readText()
-
-                                val expressions = content.lines()
-                                    .filter { it.isNotBlank() }
-                                    .map { line ->
-                                        // Strip result after # (but not if # is the first character - full comment line)
-                                        val hashIndex = line.indexOf('#')
-                                        if (hashIndex > 0) {
-                                            line.substring(0, hashIndex).trim()
-                                        } else {
-                                            line.trim()
-                                        }
-                                    }
-                                    .filter { it.isNotEmpty() } // Remove empty lines after stripping
-
-                                // Check if file exists
-                                val existingFile = existingFilesList.find { it.name == fileName }
-
-                                val fileId = if (existingFile != null) {
-                                    // Delete existing lines
-                                    val oldLines = dao.getLinesForFileSync(existingFile.id)
-                                    oldLines.forEach { dao.deleteLine(it) }
-                                    existingFile.id
-                                } else {
-                                    // Create new file
-                                    dao.insertFile(FileEntity(name = fileName, lastModified = System.currentTimeMillis()))
-                                }
-
-                                // Insert lines
-                                expressions.forEachIndexed { index, expr ->
-                                    dao.insertLine(LineEntity(
-                                        fileId = fileId,
-                                        sortOrder = index,
-                                        expression = expr,
-                                        result = ""
-                                    ))
-                                }
-
-                                // Recalculate
-                                val allLines = dao.getLinesForFileSync(fileId)
-                                val calculatedLines = MathEngine.calculate(allLines)
-                                calculatedLines.forEach { dao.updateLine(it) }
-
-                                fileCount++
-                            }
-
-                            zipIn.closeEntry()
-                            entry = zipIn.nextEntry
-                        }
-                    }
-                }
-
-                Result.success("Imported $fileCount file(s)")
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
-        }
+        return BackupManager.importFiles(context, dao, inputUri)
     }
 
     // Copy current file to clipboard with results
